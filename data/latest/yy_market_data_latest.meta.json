@@ -1,0 +1,11 @@
+{
+  "generated_at_utc": "2026-09-08T04:08:52.727879+00:00",
+  "row_count": 3748,
+  "success_count": 3742,
+  "error_count": 6,
+  "error_rate": 0.0016008537886872999,
+  "shard_file_count": 8,
+  "roic_available": 3335,
+  "operating_margin_available": 3451,
+  "fcf_yield_available": 3674
+}
