@@ -104,14 +104,18 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Commit latest data
-        run: |
-          if git diff --quiet -- data/latest; then
-            echo "No data change to commit."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/latest/yy_market_data_latest.csv data/latest/yy_market_data_latest.meta.json
-          git commit -m "data: refresh YY yfinance weekly snapshot"
-          git push
+- name: Commit latest data
+  run: |
+    git config user.name "github-actions[bot]"
+    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+    git add data/latest/yy_market_data_latest.csv \
+            data/latest/yy_market_data_latest.meta.json
+
+    if git diff --cached --quiet; then
+      echo "No data change to commit."
+      exit 0
+    fi
+
+    git commit -m "data: refresh YY yfinance weekly snapshot"
+    git push
