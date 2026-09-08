@@ -2,8 +2,10 @@ name: YY yfinance weekly collection
 
 on:
   workflow_dispatch:
+
   schedule:
-    # GitHub cron is UTC. Friday 19:00 UTC = Saturday 04:00 JST.
+    # GitHub cron is UTC.
+    # Friday 19:00 UTC = Saturday 04:00 JST.
     # YY Weekly IC runs Saturday 08:00 JST, leaving a 4-hour buffer.
     - cron: '0 19 * * 5'
 
@@ -19,6 +21,7 @@ jobs:
     name: Collect shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
+
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -43,6 +46,7 @@ jobs:
       - name: Collect yfinance data
         run: |
           mkdir -p shards
+
           python scripts/collect_shard.py \
             --input input.lst \
             --shard-index ${{ matrix.shard }} \
@@ -66,6 +70,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -85,14 +91,45 @@ jobs:
           path: shards
           merge-multiple: true
 
+      - name: Show downloaded shards
+        run: |
+          echo "=== Downloaded shard files ==="
+          find shards -maxdepth 2 -type f -print | sort
+
       - name: Merge shards and validate
         run: |
-          EXPECTED=$(grep -cve '^\s*$' input.lst)
+          EXPECTED=$(grep -cve '^[[:space:]]*$' input.lst)
+
+          echo "Expected stock count: ${EXPECTED}"
+
           python scripts/merge_shards.py \
             --shards-dir shards \
             --latest-dir data/latest \
             --expected-count "$EXPECTED" \
             --max-error-rate 0.25
+
+      - name: Verify merged files
+        run: |
+          echo "=== data/latest contents ==="
+          ls -lah data/latest
+
+          test -f data/latest/yy_market_data_latest.csv
+          test -f data/latest/yy_market_data_latest.meta.json
+
+          echo "=== CSV row count ==="
+          python - <<'PY'
+          import pandas as pd
+
+          path = "data/latest/yy_market_data_latest.csv"
+          df = pd.read_csv(path)
+
+          print(f"rows={len(df)}")
+          print(f"columns={len(df.columns)}")
+          print(df.head(3).to_string(index=False))
+          PY
+
+          echo "=== Metadata ==="
+          cat data/latest/yy_market_data_latest.meta.json
 
       - name: Upload merged snapshot
         uses: actions/upload-artifact@v7
@@ -104,18 +141,32 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-          - name: Commit latest data
-  run: |
-    git config user.name "github-actions[bot]"
-    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Commit latest data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-    git add data/latest/yy_market_data_latest.csv \
+          # Add files first.
+          # This is important because newly-created/untracked files
+          # are not detected by a normal "git diff".
+          git add \
+            data/latest/yy_market_data_latest.csv \
             data/latest/yy_market_data_latest.meta.json
 
-    if git diff --cached --quiet; then
-      echo "No data change to commit."
-      exit 0
-    fi
+          echo "=== Git status after git add ==="
+          git status --short
 
-    git commit -m "data: refresh YY yfinance weekly snapshot"
-    git push
+          # Check staged changes, including newly-created files.
+          if git diff --cached --quiet; then
+            echo "No data change to commit."
+            exit 0
+          fi
+
+          git commit -m "data: refresh YY yfinance weekly snapshot"
+
+          # Normally no conflict occurs because this workflow uses concurrency,
+          # but rebase once before push in case the repository changed
+          # while data collection was running.
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+
+          git push origin HEAD:"${GITHUB_REF_NAME}"
