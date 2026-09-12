@@ -5,7 +5,6 @@ on:
 
   schedule:
     # Friday 14:30 UTC = Friday 23:30 JST.
-    # YY Weekly IC runs Saturday 08:00 JST.
     - cron: '30 14 * * 5'
 
 permissions:
