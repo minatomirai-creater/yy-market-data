@@ -52,6 +52,7 @@ def calculate_financial_ratios(info, financials, balance_sheet):
         '1年前ROIC': None,
         '2年前ROIC': None,
         '3年前ROIC': None,
+        '参考ROIC（現預金控除後）': None,
         '法人税合計': None,
         '税引前純利益': None,
         '営業利益': None,
@@ -224,7 +225,8 @@ def calculate_financial_ratios(info, financials, balance_sheet):
                             year_data['長期有利子負債'] = debt_value
                             break
 
-                # 7. 現預金等の取得。ROICの投下資本から控除する。
+                # 7. 現預金等の取得。
+                # 正式ROICでは控除せず、最新年度の参考ROICでのみ控除する。
                 # yfinanceの銘柄ごとの行名差を吸収するため、広い定義から順に探索する。
                 cash_keys = [
                     'Cash Cash Equivalents And Short Term Investments',
@@ -283,13 +285,21 @@ def calculate_financial_ratios(info, financials, balance_sheet):
                         # 2. NOPATの計算
                         nopat = operating_income * (1 - effective_tax_rate)
                         
-                        # 3. 投下資本の計算（現預金等を控除）
-                        # Invested Capital = Equity + Interest-bearing Debt - Cash & Cash Equivalents
-                        invested_capital = equity + short_debt + long_debt - cash_and_equivalents
+                        # 3. 正式ROICの投下資本（現預金等を控除しない）
+                        # Invested Capital = Equity + Interest-bearing Debt
+                        invested_capital = equity + short_debt + long_debt
                         
                         # 4. ROICの計算。投下資本が0以下の場合は異常値化を避けるため算出しない。
                         if invested_capital > 0:
                             ratios[label] = round((nopat / invested_capital) * 100, 2)
+
+                        # 5. 現預金控除後ROICは、最新年度のみ参考値として計算する。
+                        if year_idx == 0:
+                            reference_invested_capital = invested_capital - cash_and_equivalents
+                            if reference_invested_capital > 0:
+                                ratios['参考ROIC（現預金控除後）'] = round(
+                                    (nopat / reference_invested_capital) * 100, 2
+                                )
         
     except Exception as e:
         print(f"財務比率計算中にエラー: {e}")
@@ -559,6 +569,7 @@ def analyze_japanese_stocks(stock_codes):
                 '1年前売上高増加率(%)': revenue_growth_years[1] if len(revenue_growth_years) > 1 else None,
                 '2年前売上高増加率(%)': revenue_growth_years[2] if len(revenue_growth_years) > 2 else None,
                 'ROIC(%)': ratios.get('ROIC'),
+                '参考ROIC（現預金控除後）(%)': ratios.get('参考ROIC（現預金控除後）'),
                 '1年前ROIC(%)': ratios.get('1年前ROIC'),
                 '2年前ROIC(%)': ratios.get('2年前ROIC'),
                 '3年前ROIC(%)': ratios.get('3年前ROIC'),
@@ -601,6 +612,7 @@ def analyze_japanese_stocks(stock_codes):
                 '1年前売上高増加率(%)': None,
                 '2年前売上高増加率(%)': None,
                 'ROIC(%)': None,
+                '参考ROIC（現預金控除後）(%)': None,
                 '1年前ROIC(%)': None,
                 '2年前ROIC(%)': None,
                 '3年前ROIC(%)': None,
