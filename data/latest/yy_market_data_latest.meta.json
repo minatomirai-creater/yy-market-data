@@ -1,11 +1,11 @@
 {
-  "generated_at_utc": "2026-11-06T20:44:14.031811+00:00",
+  "generated_at_utc": "2026-11-13T21:10:21.825308+00:00",
   "row_count": 3686,
   "success_count": 3686,
   "error_count": 0,
   "error_rate": 0.0,
   "shard_file_count": 8,
-  "roic_available": 3525,
-  "operating_margin_available": 3516,
-  "fcf_yield_available": 3674
+  "roic_available": 3517,
+  "operating_margin_available": 3508,
+  "fcf_yield_available": 3676
 }
